@@ -1,3 +1,40 @@
-var onRun = function (context) {
+var onRun = function(context) {
+    const bundleIdentifier = "io.zeplin.osx.debug"
+    const identifier = NSUUID.UUID().UUIDString();
     
+    const applicationPath = NSWorkspace.sharedWorkspace().absolutePathForAppBundleWithIdentifier(bundleIdentifier);
+    if (!applicationPath) {
+        NSApp.displayDialog_withTitle("Please make sure that you installed and launched it: https://zpl.io/download", "Could not locate the Zeplin app");
+        return;
+    }
+    
+    const applicationSupportUrl = NSFileManager.defaultManager().URLsForDirectory_inDomains(NSApplicationSupportDirectory, NSUserDomainMask).firstObject();
+    const projectsUrl = applicationSupportUrl.URLByAppendingPathComponent(bundleIdentifier + "/projects.json");
+    const projects = JSON.parse(NSString.stringWithContentsOfURL_encoding_error(projectsUrl, NSUTF8StringEncoding, null));
+    
+    const temporaryDirectoryPath = NSTemporaryDirectory();
+    const zeplinTemporaryDirectoryUrl = NSURL.fileURLWithPath(temporaryDirectoryPath.stringByAppendingPathComponent(bundleIdentifier));
+    NSFileManager.defaultManager().createDirectoryAtURL_withIntermediateDirectories_attributes_error(zeplinTemporaryDirectoryUrl, false, null, null);
+    
+    const initializeAttributes = {
+        "projectId": projects[0]["id"]
+    }
+    
+    const initializeFileUrl = zeplinTemporaryDirectoryUrl.URLByAppendingPathComponent(identifier + ".initialize.zpl");
+    const initializeString = NSString.stringWithString(JSON.stringify(initializeAttributes));
+    initializeString.writeToURL_atomically_encoding_error(initializeFileUrl, true, NSUTF8StringEncoding, null);
+    
+    NSWorkspace.sharedWorkspace().openFile_withApplication_andDeactivate(initializeFileUrl.path(), applicationPath, true);
+    
+    // Do the actual stuff…
+    
+    const finalizeAttributes = {
+        "projectId": projects[0]["id"]
+    }
+    
+    const finalizeFileUrl = zeplinTemporaryDirectoryUrl.URLByAppendingPathComponent(identifier + ".finalize.zpl");
+    const finalizeString = NSString.stringWithString(JSON.stringify(finalizeFileUrl));
+    finalizeString.writeToURL_atomically_encoding_error(finalizeFileUrl, true, NSUTF8StringEncoding, null);
+    
+    NSWorkspace.sharedWorkspace().openFile_withApplication_andDeactivate(finalizeFileUrl.path(), applicationPath, true);
 }
